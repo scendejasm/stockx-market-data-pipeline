@@ -2,42 +2,57 @@
 from fastapi import APIRouter, Request, HTTPException
 import requests
 import logging
+import httpx
 import os
 
 router = APIRouter()
 
-BASE_URL = "https://stockx.com/api"
-
-HEADERS = {
-    "authority": "stockx.com",
-    "method": "GET",
-    "scheme": "https",
-    "accept": "application/json",
-    "accept-language": "en-US,en;q=0.9",
-    "referer": "https://stockx.com/",
-    "sec-ch-ua": '"Chromium";v="123", "Not:A-Brand";v="8"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "x-requested-with": "XMLHttpRequest"
-}
+X_API_KEY = os.getenv("X_API_KEY")
+CLIENT_ID = os.getenv("CLIENT_ID")
+BASE_URL = "https://api.stockx.com"
+VERSION = "v2"
+ENDPOINT = "catalog"
+# HEADERS = {
+#     "Authorization": f"Bearer {token}",
+#     "Accept": "application/json",
+#     "User-Agent": "FastAPI-StockX-Client"
+# }
 
 
 @router.get("/authorize")
-async def authorize(request: Request):
+async def test_authorize(request: Request):
     token = request.session.get("ACCESS_TOKEN")
     if not token:
         return {"error": "Badges, we don't need no stinking Badges"}
     return {"token": token}
 
-def search_product(query):
+@router.get("/search")
+async def search(query: str, request: Request):
+    return await search_products(query, request)
+
+
+async def search_products(query: str, request: Request) -> dict:
     """Search Stockx products by keyword."""
-    url = f"{BASE_URL}/browse?_search={query}"
-    response = requests.get(url, headers=HEADERS)
-    response.raise_for_status()
+    token = request.session.get("ACCESS_TOKEN")
+    print(f"jwt: {token}")
+    if not token:
+        raise HTTPException(status_code=404, detail="No access token found in session")
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        # "Accept": "application/json",
+        "x-api-key": X_API_KEY
+    }
+    print(f"KEY: {X_API_KEY}")
+    url = f"{BASE_URL}/{VERSION}/{ENDPOINT}/search?query={query}"
+    print(f"URL: {url}")
+    print(f"Query: {query}")
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=f"Serch Failed: {response.text}")
+    
     return response.json()
 
 def get_product_details(product_slug):
