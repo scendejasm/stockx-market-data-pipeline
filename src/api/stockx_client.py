@@ -1,7 +1,10 @@
 # src/api/stockx_client.@property
+from fastapi import APIRouter, Request, HTTPException
 import requests
 import logging
 import os
+
+router = APIRouter()
 
 BASE_URL = "https://stockx.com/api"
 
@@ -21,6 +24,14 @@ HEADERS = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     "x-requested-with": "XMLHttpRequest"
 }
+
+
+@router.get("/authorize")
+async def authorize(request: Request):
+    token = request.session.get("ACCESS_TOKEN")
+    if not token:
+        return {"error": "Badges, we don't need no stinking Badges"}
+    return {"token": token}
 
 def search_product(query):
     """Search Stockx products by keyword."""

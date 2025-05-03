@@ -1,9 +1,11 @@
 # src/api/stockx_auth.py
 import os
 import requests
-from fastapi import APIRouter, Requests, HTTPException
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from dotenv import load_dotenv
+
+# from src.config import EBAY_APP_ID
 
 load_dotenv()
 router = APIRouter()
@@ -29,20 +31,22 @@ async def callback(request:Request):
     if not code:
         raise HTTPException(status_code=404, details="Missing authorization code")
 
-    token_url = f"https://{AUTH0_DOMAIN}/oath/token"
-    headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
+    token_url = f"https://{AUTH0_DOMAIN}/oauth/token"
+    headers = { 'content-type': 'application/x-www-form-urlencoded' }
     data = {
         'grant_type': 'authorization_code',
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
         'code': code,
-        'redirect_url': CALLBACK_URL
+        'redirect_uri': CALLBACK_URL
     }
 
     try:
         response = requests.post(token_url, headers=headers, data=data)
         response.raise_for_status()
         tokens = response.json()
+        request.session["ACCESS_TOKEN"] = tokens.get("access_token")
+        request.session["REFRESH_TOKEN"] = tokens.get("refresh_token")
         return JSONResponse(content={
                 "access_token": tokens.get("access_token"),
                 "refresh_token": tokens.get("refresh_token"),
@@ -64,5 +68,13 @@ def generate_auth0_login_url():
         f"&scope={scope}"
         f"&state={state}"
     )
-    print(login_url)
+    print(f"Using login url of: {login_url}")
     return login_url
+
+
+@router.get("/use-token")
+async def use_token(request: Request):
+    token = request.session.get("REFRESH_TOKEN")
+    if not token:
+        return {"error": "Badges, we don't need no stinking Badges"}
+    return {"token": token}
