@@ -1,9 +1,11 @@
+# src/api/ebay_client.py 
 import requests
 import logging
 from urllib.parse import quote
+from src.config import EBAY_APP_ID
 
-# Replace with your actural ebay App ID 
-EBAY_APP_ID = "YOUR_APP_ID"
+# This was removed because config.py imports the environment variables above 
+# EBAY_APP_ID = "YOUR_APP_ID"
 FINDING_API_URL = "https://svcs.ebay.com/services/search/FindingService/v1"
 
 # HEADERS = {
